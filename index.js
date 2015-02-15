@@ -97,7 +97,7 @@ MPU6050.prototype.setDeviceID = function(id) {
 };
 
 // GYRO_CONFIG register
-
+MPU6050.CLOCK_PLL_XGYRO = 0x01;
 MPU6050.RA_GYRO_CONFIG = 0x1B;
 MPU6050.GCONFIG_FS_SEL_BIT = 4;
 MPU6050.GCONFIG_FS_SEL_LENGTH = 2;
@@ -218,7 +218,7 @@ MPU6050.RA_ACCEL_ZOUT_L = 0x40;
  * @return An array containing the three accellerations.
  */
 MPU6050.prototype.getAcceleration = function() {
-  buffer = this.i2cdev.readBytes(MPU6050.RA_ACCEL_XOUT_H, 6);
+  buffer = this.i2cdev.readBytes(MPU6050.RA_ACCEL_XOUT_H, 6, function(err, buf){});
   return [
     buffer.readInt16BE(0),
     buffer.readInt16BE(2),
@@ -233,7 +233,7 @@ MPU6050.prototype.getAcceleration = function() {
  * @see getRotation()
  */
 MPU6050.prototype.getMotion6 = function() {
-  buffer = this.i2cdev.readBytes(MPU6050.RA_ACCEL_XOUT_H, 14);
+  buffer = this.i2cdev.readBytes(MPU6050.RA_ACCEL_XOUT_H, 14, function(err, buf){});
   
   return [
       buffer.readInt16BE(0),
@@ -287,7 +287,7 @@ MPU6050.RA_GYRO_ZOUT_L = 0x48;
  * @see getMotion6()
  */
 MPU6050.prototype.getRotation = function() {
-   var buffer = this.i2cdev.readBytes(MPU6050.RA_GYRO_XOUT_H, 6);
+   var buffer = this.i2cdev.readBytes(MPU6050.RA_GYRO_XOUT_H, 6, function(err, buf){});
    return [buffer.readInt16BE(0), buffer.readInt16BE(2), buffer.readInt16BE(4)];  
 };
 
@@ -393,23 +393,32 @@ I2cDev.prototype.readBits = function(func, bit, bitLength, callback) {
       callback(err, bits);
     });
   } else {
-    var buf = this.readBytes(func, 1);
+    var buf = this.readBytes(func, 1, function(err, buf) {});
     return (buf[0] & mask) >> (1 + bit - bitLength);
   }
 };
 
 I2cDev.prototype.readBit = function(func, bit, bitLength, callback) {
+  if (typeof callback === 'undefined' || !callback) {
+    callback = function(err, actualBuffer) {};
+  }
   return this.readBits(func, bit, 1, callback);
 };
 
 I2cDev.prototype.writeBits = function(func, bit, bitLength, value, callback) {
-  var oldValue = this.readBytes(func, 1);
+  var oldValue = this.readBytes(func, 1, function(err, buf) {});
   var mask = this.bitMask(bit, bitLength);
   var newValue = oldValue ^ ((oldValue ^ (value << bit)) & mask);
+  if (typeof callback === 'undefined' || !callback) {
+    callback = function(err, actualBuffer) {};
+  }
   this.writeBytes(func, [newValue], callback);
 };
 
 I2cDev.prototype.writeBit = function(func, bit, value, callback) {
+  if (typeof callback === 'undefined' || !callback) {
+    callback = function(err, actualBuffer) {};
+  }
   this.writeBits(func, bit, 1, value, callback);
 };
 
